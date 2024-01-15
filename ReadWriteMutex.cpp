@@ -83,6 +83,8 @@ public:
     }
 };
 
+thread_local std::size_t LocalThreadLockCounter = 0;
+
 /**
     \brief A class for synchronizing threads
 
@@ -150,23 +152,31 @@ public:
     */
     void ReadLock()
     {
+    if (LocalThreadLockCounter == 0)
+    {
         WriteMutex.lock();
         ReadMutex.lock();
         ReadCounter.fetch_add(1);
         ReadMutex.unlock();
         WriteMutex.unlock();
     }
+    ++LocalThreadLockCounter;
+    }
 
     /// \brief A method for unlocking a section of code for reading
     void ReadUnlock()
     {
-        ReadMutex.lock();
-        ReadCounter.fetch_sub(1);
+        if (LocalThreadLockCounter == 1)
+        {
+            ReadMutex.lock();
+            ReadCounter.fetch_sub(1);
 
-        if (ReadCounter.load() == 0)
-            while (IsCondVarWaiting.load()) Cv.notify_all();
-        
-        ReadMutex.unlock();
+            if (ReadCounter.load() == 0)
+                while (IsCondVarWaiting.load()) Cv.notify_all();
+
+            ReadMutex.unlock();
+        }
+        --LocalThreadLockCounter;
     }
 
     /**
