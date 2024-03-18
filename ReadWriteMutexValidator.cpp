@@ -1,17 +1,38 @@
 #include <iostream>
 #include <mutex>
 
+/**
+    \brief A secure mutex class
 
+    This class provides shared access to the mutex.
+    To explain this class, consider an example. There are 2 objects of classes A and B. 
+    An object of class B stores a pointer to an object of class A. The thread safety of class A is provided using std::mutex. 
+    To access object A from B, a mutex is used inside A. When object A is deleted, the pointer to it inside B ceases to be valid.
+    This class solves this problem. 
+    Objects of this class are divided into 2 types: parent and non-parent. The parent is created in the main object, A if we talk about the example above, 
+    and not the parent is not created in the main ones, i.e. B from the example above.
+    Memory is allocated only in parent. Each copy of the object increases the counter by 1, 
+    each destruction of the object decreases the counter by 1. Memory is freed when the counter becomes 0.
+*/
 class MutexValidator
 {
 private:
     
+    // Mutex for thread-safety
     std::recursive_mutex* Mtx = nullptr;
+
+    // Counter to store ref amount
     std::size_t* Counter = nullptr;
+
+    // Bool variable to store info about main object validity
     bool* IsValid = nullptr;
+
+    // Bool variable to mark original object
     bool IsOriginal;
 
 public:
+
+    /// \brief Default constructor
     MutexValidator()
     {
         Mtx = new std::recursive_mutex;
@@ -21,6 +42,8 @@ public:
         IsOriginal = true;
     }
 
+    /// \brief Copy constructor
+    /// \param [in] other other MutexValidator object
     MutexValidator(const MutexValidator& other)
     {
         other.Mtx->lock();
@@ -35,13 +58,15 @@ public:
         other.Mtx->unlock();
     }
 
+    /// \brief Assignment operator
+    /// \param [in] other other MutexValidator object
     MutexValidator& operator=(const MutexValidator& other)
     {
+        // Check if it is not same object
         if (this != &other)
         {
-            // Clear old
+            // Clear old data
             Mtx->lock();
-
 
             --*Counter;
             if (*Counter == 0)
@@ -53,7 +78,7 @@ public:
         
             Mtx->unlock();
 
-            // Set new
+            // Set new data
             other.Mtx->lock();
 
             Mtx = other.Mtx;
@@ -69,27 +94,34 @@ public:
         return *this;
     }
 
-    // Must be inside Lock and Unlock
+    /// \brief Method for checking main object validity
+    /// \warning Must be used only inside Lock and Unlock
+    /// \return main object validity
     bool GetIsValid()
     {
         return *IsValid;
     }
 
+    /// \brief Lock code section to thread-safety
     void Lock()
     {
         Mtx->lock();
     }
 
+    /// \brief Try to lock code section to thread-safety
+    /// \return true if locked, false otherwise
     bool TryLock()
     {
         return Mtx->try_lock();
     }
 
+    /// \brief Unlock code section to thread-safety
     void Unlock()
     {
         Mtx->unlock();
     }
 
+    /// \brief Default destructor
     ~MutexValidator()
     {
         Mtx->lock();
