@@ -168,6 +168,42 @@ public:
     }
 };
 
+template <class Lock>
+class ReadLock
+{
+private:
+    Lock& Mtx;
+
+public:
+    ReadLock(Lock& mtx) : Mtx(mtx)
+    {
+        Mtx.ReadLock();
+    }
+
+    ~ReadLock()
+    {
+        Mtx.ReadUnlock();
+    }
+};
+
+template <class Lock>
+class WriteLock
+{
+private:
+    Lock& Mtx;
+
+public:
+    WriteLock(Lock& mtx) : Mtx(mtx)
+    {
+        Mtx.WriteLock();
+    }
+
+    ~WriteLock()
+    {
+        Mtx.WriteUnLock();
+    }
+};
+
 // Demo
 #include <vector>
 
@@ -295,4 +331,8 @@ int main()
 
     th4.join();
     th5.join();
+
+
+    ReadLock<RecursiveReadWriteMutex> rlk(rrwx);
+    ReadLock<RecursiveReadWriteMutex> wlk(rrwx);
 }
